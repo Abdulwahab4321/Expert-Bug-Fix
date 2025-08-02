@@ -1,73 +1,157 @@
-# Welcome to your Lovable project
+# Lead Capture Application - Bug Fix Report
 
-## Project info
+## 🐛 Bug Analysis and Fixes
 
-**URL**: https://lovable.dev/projects/94b52f1d-10a5-4e88-9a9c-5c12cf45d83a
+### **Bug 1: Duplicate Email Function Call**
+**Location**: `src/components/LeadCaptureForm.tsx` (Lines 32-55)
+**Issue**: The Supabase function `send-confirmation` was being called twice with identical parameters, causing unnecessary API calls and potential rate limiting issues.
+**Fix**: Removed the duplicate function call and consolidated the email sending logic into a single call.
 
-## How can I edit this code?
+### **Bug 2: Missing Database Insert Operation**
+**Location**: `src/components/LeadCaptureForm.tsx` (Lines 32-42)
+**Issue**: The form was saving leads to local state but not inserting them into the Supabase database, despite having a properly configured `leads` table.
+**Fix**: Added proper database insert operation using `supabase.from('leads').insert()` before sending the confirmation email.
 
-There are several ways of editing your application.
+### **Bug 3: OpenAI API Response Parsing Error**
+**Location**: `supabase/functions/send-confirmation/index.ts` (Line 47)
+**Issue**: Incorrect array index `choices[1]` was used instead of `choices[0]` when parsing the OpenAI API response.
+**Fix**: Changed to `choices[0]` to correctly access the first (and only) response choice.
 
-**Use Lovable**
+### **Bug 4: Incomplete Lead Store Integration**
+**Location**: `src/components/LeadCaptureForm.tsx` and `src/lib/lead-store.ts`
+**Issue**: The Zustand store was imported but not properly integrated with the form submission flow.
+**Fix**: 
+- Updated the `Lead` interface to include the `industry` field
+- Integrated the store's `addLead` function in the form submission
+- Used `sessionLeads` from the store instead of local state
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/94b52f1d-10a5-4e88-9a9c-5c12cf45d83a) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+## 🛠️ Technical Stack
 
 This project is built with:
+- **Vite** - Fast build tool and development server
+- **TypeScript** - Type-safe JavaScript
+- **React** - UI library
+- **shadcn-ui** - Modern UI components
+- **Tailwind CSS** - Utility-first CSS framework
+- **Supabase** - Backend as a Service (Database, Auth, Functions)
+- **Zustand** - State management
+- **React Router** - Client-side routing
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🚀 Features
 
-## How can I deploy this project?
+- **Lead Capture Form**: Collects name, email, and industry information
+- **Form Validation**: Client-side validation with error messages
+- **Database Storage**: Leads are stored in Supabase PostgreSQL database
+- **Email Confirmation**: Personalized AI-generated welcome emails via Resend
+- **Session Management**: Track leads submitted in current session
+- **Responsive Design**: Modern UI with animations and gradients
 
-Simply open [Lovable](https://lovable.dev/projects/94b52f1d-10a5-4e88-9a9c-5c12cf45d83a) and click on Share -> Publish.
+## 📁 Project Structure
 
-## Can I connect a custom domain to my Lovable project?
+```
+src/
+├── components/
+│   ├── LeadCaptureForm.tsx    # Main form component
+│   ├── LeadCapturePage.tsx    # Page layout
+│   ├── SuccessMessage.tsx     # Success state
+│   └── ui/                    # shadcn-ui components
+├── lib/
+│   ├── lead-store.ts          # Zustand state management
+│   ├── validation.ts          # Form validation logic
+│   └── utils.ts               # Utility functions
+├── integrations/
+│   └── supabase/
+│       ├── client.ts          # Supabase client configuration
+│       └── types.ts           # Database types
+└── pages/
+    └── Index.tsx              # Main page component
+```
 
-Yes, you can!
+## 🗄️ Database Schema
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```sql
+CREATE TABLE public.leads (
+  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  industry TEXT NOT NULL DEFAULT 'Other',
+  submitted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  session_id TEXT,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🔧 Supabase Functions
+
+### `send-confirmation`
+- **Purpose**: Sends personalized welcome emails
+- **Features**: 
+  - AI-generated content using OpenAI GPT-4
+  - Industry-specific personalization
+  - Professional HTML email template
+  - Error handling and logging
+
+## 🚀 Getting Started
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd expert-test
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Open your browser**
+   Navigate to `http://localhost:5173`
+
+## 🔧 Environment Variables
+
+The following environment variables are required for the Supabase function:
+
+- `RESEND_PUBLIC_KEY` - Resend API key for email sending
+- `OPENAI_API_KEY` - OpenAI API key for AI content generation
+
+## 🧪 Testing
+
+Run the following commands to ensure everything is working:
+
+```bash
+# Type checking
+npx tsc --noEmit
+
+# Linting
+npm run lint
+
+# Build
+npm run build
+```
+
+## 📝 Summary of Changes
+
+1. **Fixed duplicate API calls** in form submission
+2. **Added database insert operation** for lead storage
+3. **Corrected OpenAI response parsing** in email function
+4. **Integrated Zustand store** properly with form flow
+5. **Updated TypeScript interfaces** to include industry field
+6. **Improved error handling** throughout the application
+
+## 🎯 Key Improvements
+
+- **Data Persistence**: Leads are now properly stored in the database
+- **Performance**: Eliminated duplicate API calls
+- **Reliability**: Fixed OpenAI API response parsing
+- **State Management**: Proper integration with Zustand store
+- **Type Safety**: Updated interfaces for better TypeScript support
+
+---
+
+*This project demonstrates a modern React application with proper error handling, database integration, and email automation capabilities.*

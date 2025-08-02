@@ -4,6 +4,20 @@ import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_PUBLIC_KEY") || "invalid_key");
 
+// Check if required environment variables are set
+const checkEnvironmentVariables = () => {
+  const resendKey = Deno.env.get("RESEND_PUBLIC_KEY");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  
+  if (!resendKey || resendKey === "invalid_key") {
+    console.warn("RESEND_PUBLIC_KEY not set - email sending will fail");
+  }
+  
+  if (!openaiKey) {
+    console.warn("OPENAI_API_KEY not set - will use fallback content");
+  }
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -42,7 +56,7 @@ const generatePersonalizedContent = async (name: string, industry: string) => {
     });
 
     const data = await response.json();
-    return data?.choices[1]?.message?.content;
+    return data?.choices[0]?.message?.content;
   } catch (error) {
     console.error('Error generating personalized content:', error);
     // Fallback content
@@ -51,6 +65,9 @@ const generatePersonalizedContent = async (name: string, industry: string) => {
 };
 
 const handler = async (req: Request): Promise<Response> => {
+  // Check environment variables on function start
+  checkEnvironmentVariables();
+  
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

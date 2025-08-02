@@ -5,18 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { validateLeadForm, ValidationError } from '@/lib/validation';
 import { supabase } from '@/integrations/supabase/client';
+import { useLeadStore } from '@/lib/lead-store';
 
 export const LeadCaptureForm = () => {
   const [formData, setFormData] = useState({ name: '', email: '', industry: '' });
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
-  const [submitted, setSubmitted] = useState(false);
-  const [leads, setLeads] = useState<
-    Array<{ name: string; email: string; industry: string; submitted_at: string }>
-  >([]);
+  const { submitted, setSubmitted, addLead, sessionLeads } = useLeadStore();
 
   useEffect(() => {
     setSubmitted(false);
-  }, []);
+  }, [setSubmitted]);
   const getFieldError = (field: string) => {
     return validationErrors.find(error => error.field === field)?.message;
   };
@@ -26,53 +24,56 @@ export const LeadCaptureForm = () => {
     setValidationErrors(errors);
 
     if (errors.length === 0) {
-      // Save to database
-try {
-  const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
-    body: {
-      name: formData.name,
-      email: formData.email,
-      industry: formData.industry,
-    },
-  });
-
-  if (emailError) {
-    console.error('Error sending confirmation email:', emailError);
-  } else {
-    console.log('Confirmation email sent successfully');
-  }
-} catch (emailError) {
-  console.error('Error calling email function:', emailError);
-}
-
-      // Send confirmation email
       try {
-        const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
-          body: {
+        // Insert lead into database
+        const { error: dbError } = await supabase
+          .from('leads')
+          .insert({
             name: formData.name,
             email: formData.email,
             industry: formData.industry,
-          },
-        });
+          });
 
-        if (emailError) {
-          console.error('Error sending confirmation email:', emailError);
+        if (dbError) {
+          console.error('Error saving to database:', dbError);
+          // Continue with form submission even if database fails
         } else {
-          console.log('Confirmation email sent successfully');
+          console.log('Lead saved to database successfully');
         }
-      } catch (emailError) {
-        console.error('Error calling email function:', emailError);
-      }
 
-      const lead = {
-        name: formData.name,
-        email: formData.email,
-        industry: formData.industry,
-        submitted_at: new Date().toISOString(), 
-      };
-      setLeads([...leads, lead]);
-      setSubmitted(true);
-      setFormData({ name: '', email: '', industry: '' });
+        // Send confirmation email (non-blocking)
+        try {
+          const { error: emailError } = await supabase.functions.invoke('send-confirmation', {
+            body: {
+              name: formData.name,
+              email: formData.email,
+              industry: formData.industry,
+            },
+          });
+
+          if (emailError) {
+            console.error('Error sending confirmation email:', emailError);
+            // Continue even if email fails
+          } else {
+            console.log('Confirmation email sent successfully');
+          }
+        } catch (emailError) {
+          console.error('Error calling email function:', emailError);
+          // Continue even if email function fails
+        }
+
+        const lead = {
+          name: formData.name,
+          email: formData.email,
+          industry: formData.industry,
+          submitted_at: new Date().toISOString(), 
+        };
+        addLead(lead);
+        setSubmitted(true);
+        setFormData({ name: '', email: '', industry: '' });
+      } catch (error) {
+        console.error('Error in form submission:', error);
+      }
     }
   };
 
@@ -100,7 +101,7 @@ try {
           </p>
 
           <p className="text-sm text-accent mb-8">
-            You're #{leads.length} in this session
+            You're #{sessionLeads.length} in this session
           </p>
 
           <div className="space-y-4">
