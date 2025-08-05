@@ -155,3 +155,4 @@ npm run build
 ---
 
 *This project demonstrates a modern React application with proper error handling, database integration, and email automation capabilities.*
+
