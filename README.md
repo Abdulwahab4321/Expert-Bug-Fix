@@ -2,7 +2,7 @@
 
 ## Critical Fixes Implemented
 
-### 1. Duplicate Email Function Call
+### 1. Duplicate Email Function Call\n
 **File**: `src/components/LeadCaptureForm.tsx`
 **Severity**: High
 **Status**: Fixed
